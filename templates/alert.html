@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Security Alert</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f8d7da;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .alert-box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 400px;
+        }
+
+        h2 {
+            color: red;
+        }
+
+        p {
+            margin: 20px 0;
+        }
+
+        a {
+            text-decoration: none;
+            color: white;
+            background: red;
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="alert-box">
+    <h2>🚨 Security Alert</h2>
+    <p>{{ message }}</p>
+    <a href="/">Go Back</a>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Success</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #d4edda;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .success-box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 400px;
+        }
+
+        h2 {
+            color: green;
+        }
+
+        a {
+            text-decoration: none;
+            color: white;
+            background: green;
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="success-box">
+    <h2>✅ Login Successful</h2>
+    <p>Welcome, {{ username }}</p>
+    <a href="/">Logout</a>
+</div>
+
+</body>
+</html>

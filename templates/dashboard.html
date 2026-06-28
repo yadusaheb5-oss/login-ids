@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f6f9;
+            padding: 20px;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 200px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>📊 Admin Dashboard</h2>
+
+<div class="stats">
+    <div class="card">
+        <h3>Total Logins</h3>
+        <p>{{ total }}</p>
+    </div>
+
+    <div class="card">
+        <h3>Success</h3>
+        <p>{{ success }}</p>
+    </div>
+
+    <div class="card">
+        <h3>Failed</h3>
+        <p>{{ failed }}</p>
+    </div>
+</div>
+
+<h3>Recent Activity</h3>
+
+<table>
+    <tr>
+        <th>Username</th>
+        <th>IP</th>
+        <th>Time</th>
+        <th>Status</th>
+    </tr>
+
+    {% for row in logs %}
+    <tr>
+        <td>{{ row[0] }}</td>
+        <td>{{ row[1] }}</td>
+        <td>{{ row[2] }}</td>
+        <td>{{ row[3] }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+</body>
+</html>
