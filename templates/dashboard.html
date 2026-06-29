@@ -2,49 +2,63 @@
 <html>
 <head>
     <title>Admin Dashboard</title>
+
     <style>
-        body {
+
+        body{
             font-family: Arial;
-            background: #f4f6f9;
-            padding: 20px;
+            background:#f4f6f9;
+            padding:20px;
         }
 
-        h2 {
-            text-align: center;
+        h2{
+            text-align:center;
         }
 
-        .stats {
-            display: flex;
-            justify-content: space-around;
-            margin: 20px 0;
+        .stats{
+            display:flex;
+            justify-content:space-around;
+            margin:20px 0;
         }
 
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            width: 200px;
-            text-align: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        .card{
+            background:white;
+            padding:20px;
+            width:200px;
+            text-align:center;
+            border-radius:10px;
+            box-shadow:0 5px 15px rgba(0,0,0,0.1);
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
+        table{
+            width:100%;
+            border-collapse:collapse;
+            background:white;
         }
 
-        th, td {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-            text-align: center;
+        th,td{
+            padding:12px;
+            border-bottom:1px solid #ddd;
+            text-align:center;
         }
 
-        th {
-            background: #667eea;
-            color: white;
+        th{
+            background:#667eea;
+            color:white;
         }
+
+        .success{
+            color:green;
+            font-weight:bold;
+        }
+
+        .failed{
+            color:red;
+            font-weight:bold;
+        }
+
     </style>
+
 </head>
 
 <body>
@@ -52,40 +66,55 @@
 <h2>📊 Admin Dashboard</h2>
 
 <div class="stats">
+
     <div class="card">
         <h3>Total Logins</h3>
-        <p>{{ total }}</p>
+        <h2>{{ total }}</h2>
     </div>
 
     <div class="card">
-        <h3>Success</h3>
-        <p>{{ success }}</p>
+        <h3>Successful Logins</h3>
+        <h2>{{ success }}</h2>
     </div>
 
     <div class="card">
-        <h3>Failed</h3>
-        <p>{{ failed }}</p>
+        <h3>Failed Logins</h3>
+        <h2>{{ failed }}</h2>
     </div>
+
 </div>
 
-<h3>Recent Activity</h3>
+<h3>Recent Login Activity</h3>
 
 <table>
+
     <tr>
         <th>Username</th>
-        <th>IP</th>
-        <th>Time</th>
+        <th>Browser</th>
+        <th>Login Time</th>
         <th>Status</th>
     </tr>
 
     {% for row in logs %}
     <tr>
+
         <td>{{ row[0] }}</td>
+
         <td>{{ row[1] }}</td>
+
         <td>{{ row[2] }}</td>
-        <td>{{ row[3] }}</td>
+
+        <td>
+            {% if row[3] == "success" %}
+                <span class="success">Success</span>
+            {% else %}
+                <span class="failed">Failed</span>
+            {% endif %}
+        </td>
+
     </tr>
     {% endfor %}
+
 </table>
 
 </body>
