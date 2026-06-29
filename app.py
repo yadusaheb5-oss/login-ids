@@ -135,17 +135,27 @@ def login():
         )
 
     # =====================================================
-    # Model 2 : New Browser Detection
-    # =====================================================
+# =====================================================
+# Model 2 : New Browser Detection
+# =====================================================
+
+if status == "success":
 
     cursor.execute(
-        "SELECT device FROM logins WHERE username=?",
+        """
+        SELECT device
+        FROM logins
+        WHERE username=? AND status='success'
+        ORDER BY id ASC
+        LIMIT 1
+        """,
         (username,)
     )
 
-    known_browsers = [row[0] for row in cursor.fetchall()]
+    first_browser = cursor.fetchone()
 
-    if len(known_browsers) > 0 and browser not in known_browsers:
+    # First successful login → Register browser
+    if first_browser is not None and browser != first_browser[0]:
         alert_message = "🌐 ALERT: Login from a new browser detected."
         alert_type = "browser"
 
@@ -197,11 +207,13 @@ def login():
     # Redirect
     # =====================================================
 
-    if status == "success":
-        return redirect("/dashboard")
-    else:
-        return "Login Failed"
-
+if status == "success":
+    return redirect("/dashboard")
+else:
+    return render_template(
+        "alert.html",
+        message="❌ Invalid Username or Password"
+    )
 
 # -------------------- Dashboard --------------------
 @app.route('/dashboard')
