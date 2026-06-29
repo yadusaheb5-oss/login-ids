@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request, redirect
+ from flask import Flask, render_template, request, redirect
 import sqlite3
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 
@@ -9,7 +10,7 @@ def init_db():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
 
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS logins (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
@@ -19,7 +20,7 @@ def init_db():
             status TEXT,
             alert TEXT
         )
-    ''')
+    """)
 
     conn.commit()
     conn.close()
@@ -39,7 +40,7 @@ def get_browser(user_agent):
         return "Mozilla Firefox"
     elif "safari" in user_agent and "chrome" not in user_agent:
         return "Safari"
-    elif "opera" in user_agent or "opr" in user_agent:
+    elif "opr" in user_agent or "opera" in user_agent:
         return "Opera"
     else:
         return "Unknown Browser"
@@ -48,7 +49,7 @@ def get_browser(user_agent):
 # -------------------- Home --------------------
 @app.route('/')
 def home():
-    return render_template('login.html')
+    return render_template("login.html")
 
 
 # -------------------- Login --------------------
@@ -58,9 +59,9 @@ def login():
     username = request.form['username']
     password = request.form['password']
 
-    browser = get_browser(request.headers.get('User-Agent', ''))
+    browser = get_browser(request.headers.get("User-Agent", ""))
 
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
     alert_type = "none"
@@ -70,7 +71,7 @@ def login():
     # Model 4 : Spike Detection
     # =====================================================
 
-    one_minute_ago = datetime.now().timestamp() - 60
+    one_minute_ago = datetime.now(ZoneInfo("Asia/Kolkata")).timestamp() - 60
 
     cursor.execute("SELECT timestamp FROM logins")
     recent_attempts = cursor.fetchall()
@@ -80,8 +81,10 @@ def login():
     for row in recent_attempts:
         try:
             log_time = datetime.fromisoformat(row[0]).timestamp()
+
             if log_time >= one_minute_ago:
                 count += 1
+
         except:
             pass
 
@@ -147,10 +150,11 @@ def login():
         alert_type = "browser"
 
     # =====================================================
-    # Model 3 : Time Detection
+    # Model 3 : Time Detection (IST)
     # =====================================================
 
-    current_hour = datetime.now().hour
+    current_time = datetime.now(ZoneInfo("Asia/Kolkata"))
+    current_hour = current_time.hour
 
     if current_hour < 9 or current_hour > 22:
 
@@ -175,16 +179,14 @@ def login():
             username,
             password,
             browser,
-            datetime.now().isoformat(),
+            datetime.now(ZoneInfo("Asia/Kolkata")).isoformat(),
             status,
             alert_type
         )
     )
 
     conn.commit()
-    conn.close()
-
-    # =====================================================
+    conn.close()    # =====================================================
     # Show Alert
     # =====================================================
 
@@ -205,7 +207,7 @@ def login():
 @app.route('/dashboard')
 def dashboard():
 
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
     cursor.execute("SELECT COUNT(*) FROM logins")
@@ -238,5 +240,5 @@ def dashboard():
 
 
 # -------------------- Run --------------------
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
