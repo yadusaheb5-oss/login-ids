@@ -9,17 +9,17 @@ def init_db():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
 
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS logins (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT,
-            password TEXT,
-            ip_address TEXT,
-            timestamp TEXT,
-            status TEXT,
-            alert TEXT
-        )
-    ''')
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS logins (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT,
+        password TEXT,
+        device TEXT,
+        timestamp TEXT,
+        status TEXT,
+        alert TEXT
+    )
+''')
 
     conn.commit()
     conn.close()
