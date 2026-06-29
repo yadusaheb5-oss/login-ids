@@ -4,49 +4,79 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# Create database
+# -------------------- Create Database --------------------
 def init_db():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
 
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS logins (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT,
-        password TEXT,
-        device TEXT,
-        timestamp TEXT,
-        status TEXT,
-        alert TEXT
-    )
-''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS logins (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            password TEXT,
+            device TEXT,
+            timestamp TEXT,
+            status TEXT,
+            alert TEXT
+        )
+    ''')
 
     conn.commit()
     conn.close()
 
 init_db()
 
+
+# -------------------- Detect Browser --------------------
+def get_browser(user_agent):
+    user_agent = user_agent.lower()
+
+    if "edg" in user_agent:
+        return "Microsoft Edge"
+    elif "chrome" in user_agent and "edg" not in user_agent:
+        return "Google Chrome"
+    elif "firefox" in user_agent:
+        return "Mozilla Firefox"
+    elif "safari" in user_agent and "chrome" not in user_agent:
+        return "Safari"
+    elif "opera" in user_agent or "opr" in user_agent:
+        return "Opera"
+    else:
+        return "Unknown Browser"
+
+
+# -------------------- Home --------------------
 @app.route('/')
 def home():
     return render_template('login.html')
 
+
+# -------------------- Login --------------------
 @app.route('/login', methods=['POST'])
 def login():
+
     username = request.form['username']
     password = request.form['password']
-    ip_address = request.form.get('ip', request.remote_addr)
+
+    browser = get_browser(request.headers.get('User-Agent', ''))
 
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    alert_type = "none"
 
-    # ⚡ Model 4: Spike Detection
+    alert_type = "none"
+    alert_message = None
+
+    # =====================================================
+    # Model 4 : Spike Detection
+    # =====================================================
+
     one_minute_ago = datetime.now().timestamp() - 60
 
     cursor.execute("SELECT timestamp FROM logins")
     recent_attempts = cursor.fetchall()
 
     count = 0
+
     for row in recent_attempts:
         try:
             log_time = datetime.fromisoformat(row[0]).timestamp()
@@ -56,79 +86,125 @@ def login():
             pass
 
     if count >= 5:
-        alert_type = "spike"
         conn.close()
-        return render_template("alert.html", message="⚡ ALERT: Too many login attempts in short time (Spike Detected)")
+        return render_template(
+            "alert.html",
+            message="⚡ ALERT: Too many login attempts in a short time (Spike Detected)"
+        )
 
-    # 🔴 Model 1: Brute Force Detection
-    cursor.execute("SELECT timestamp FROM logins WHERE username=? AND status='failed'", (username,))
-    rows = cursor.fetchall()
+    # =====================================================
+    # Normal Login Check
+    # =====================================================
 
-    failed_attempts = 0
-    for row in rows:
-        try:
-            log_time = datetime.fromisoformat(row[0]).timestamp()
-            if log_time >= one_minute_ago:
-                failed_attempts += 1
-        except:
-            pass
-
-    if failed_attempts >= 5:
-        alert_type = "brute"
-        conn.close()
-        return render_template("alert.html", message="🚨 ALERT: Too many failed attempts (Brute Force Detected)")
-
-    # 🔍 Get previous IPs
-    cursor.execute("SELECT ip_address FROM logins WHERE username=?", (username,))
-    known_ips = list(set([row[0] for row in cursor.fetchall()]))
-
-    print("Current IP:", ip_address)
-    print("Known IPs:", known_ips)
-
-    alert_message = None
-
-    # 🌍 Model 2: IP Detection
-    if len(known_ips) > 0 and ip_address not in known_ips:
-        alert_message = "🌍 ALERT: Login from new IP address detected"
-        alert_type = "ip"
-
-    # ⏰ Model 3: Time Detection
-    current_hour = datetime.now().hour
-    if current_hour < 9 or current_hour > 22:
-        if alert_message:
-            alert_message += " + ⏰ Unusual login time"
-        else:
-            alert_message = "⏰ ALERT: Login at unusual time detected"
-        alert_type = "time"
-
-    # ✅ Normal login
     if username == "admin" and password == "1234":
         status = "success"
     else:
         status = "failed"
 
-    # 💾 Store login
+    # =====================================================
+    # Model 1 : Brute Force Detection
+    # =====================================================
+
     cursor.execute(
-        "INSERT INTO logins (username, password, ip_address, timestamp, status, alert) VALUES (?, ?, ?, ?, ?, ?)",
-        (username, password, ip_address, datetime.now(), status, alert_type)
+        "SELECT timestamp FROM logins WHERE username=? AND status='failed'",
+        (username,)
+    )
+
+    rows = cursor.fetchall()
+
+    failed_attempts = 0
+
+    for row in rows:
+        try:
+            log_time = datetime.fromisoformat(row[0]).timestamp()
+
+            if log_time >= one_minute_ago:
+                failed_attempts += 1
+
+        except:
+            pass
+
+    if failed_attempts >= 5:
+        conn.close()
+        return render_template(
+            "alert.html",
+            message="🚨 ALERT: Too many failed login attempts (Brute Force Detected)"
+        )
+
+    # =====================================================
+    # Model 2 : New Browser Detection
+    # =====================================================
+
+    cursor.execute(
+        "SELECT device FROM logins WHERE username=?",
+        (username,)
+    )
+
+    known_browsers = [row[0] for row in cursor.fetchall()]
+
+    if len(known_browsers) > 0 and browser not in known_browsers:
+        alert_message = "🌐 ALERT: Login from a new browser detected."
+        alert_type = "browser"
+
+    # =====================================================
+    # Model 3 : Time Detection
+    # =====================================================
+
+    current_hour = datetime.now().hour
+
+    if current_hour < 9 or current_hour > 22:
+
+        if alert_message:
+            alert_message += " + ⏰ Unusual login time detected."
+        else:
+            alert_message = "⏰ ALERT: Login at unusual time detected."
+
+        alert_type = "time"
+
+    # =====================================================
+    # Store Login
+    # =====================================================
+
+    cursor.execute(
+        """
+        INSERT INTO logins
+        (username,password,device,timestamp,status,alert)
+        VALUES(?,?,?,?,?,?)
+        """,
+        (
+            username,
+            password,
+            browser,
+            datetime.now().isoformat(),
+            status,
+            alert_type
+        )
     )
 
     conn.commit()
     conn.close()
 
-    # 🚨 Show alerts if any
+    # =====================================================
+    # Show Alert
+    # =====================================================
+
     if alert_message:
         return render_template("alert.html", message=alert_message)
 
-    # ✅ Redirect on success
+    # =====================================================
+    # Redirect
+    # =====================================================
+
     if status == "success":
         return redirect("/dashboard")
     else:
-        return "Login failed"
+        return "Login Failed"
 
 
+# -------------------- Dashboard --------------------
 @app.route('/dashboard')
 def dashboard():
+
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
 
@@ -141,13 +217,26 @@ def dashboard():
     cursor.execute("SELECT COUNT(*) FROM logins WHERE status='failed'")
     failed = cursor.fetchone()[0]
 
-    cursor.execute("SELECT username, ip_address, timestamp, status FROM logins ORDER BY id DESC LIMIT 10")
+    cursor.execute("""
+        SELECT username, device, timestamp, status
+        FROM logins
+        ORDER BY id DESC
+        LIMIT 10
+    """)
+
     logs = cursor.fetchall()
 
     conn.close()
 
-    return render_template("dashboard.html", total=total, success=success, failed=failed, logs=logs)
+    return render_template(
+        "dashboard.html",
+        total=total,
+        success=success,
+        failed=failed,
+        logs=logs
+    )
 
 
+# -------------------- Run --------------------
 if __name__ == '__main__':
     app.run(debug=True)
