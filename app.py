@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # -------------------- Create Database --------------------
 def init_db():
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -24,6 +24,7 @@ def init_db():
 
     conn.commit()
     conn.close()
+
 
 init_db()
 
@@ -47,19 +48,23 @@ def get_browser(user_agent):
 
 
 # -------------------- Home --------------------
-@app.route('/')
+@app.route("/")
 def home():
     return render_template("login.html")
 
 
 # -------------------- Login --------------------
-@app.route('/login', methods=['POST'])
+@app.route("/login", methods=["POST"])
 def login():
 
-    username = request.form['username']
-    password = request.form['password']
+    username = request.form["username"]
+    password = request.form["password"]
 
     browser = get_browser(request.headers.get("User-Agent", ""))
+
+    current_time = datetime.now(ZoneInfo("Asia/Kolkata"))
+    current_timestamp = current_time.isoformat()
+    one_minute_ago = current_time.timestamp() - 60
 
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
@@ -67,28 +72,75 @@ def login():
     alert_type = "none"
     alert_message = None
 
+    # ---------------- Normal Login ----------------
+    if username == "admin" and password == "1234":
+        status = "success"
+    else:
+        status = "failed"
+
+    # =====================================================
+    # Model 2 : New Browser Detection
+    # =====================================================
+    cursor.execute(
+        "SELECT device FROM logins WHERE username=?",
+        (username,)
+    )
+
+    known_browsers = [row[0] for row in cursor.fetchall()]
+
+    if known_browsers and browser not in known_browsers:
+        alert_message = "🌐 ALERT: Login from a new browser detected."
+        alert_type = "browser"
+
+    # =====================================================
+    # Model 3 : Time Detection
+    # =====================================================
+    if current_time.hour < 9 or current_time.hour > 22:
+
+        if alert_message:
+            alert_message += " + ⏰ Unusual login time detected."
+        else:
+            alert_message = "⏰ ALERT: Login at unusual time detected."
+
+        alert_type = "time"
+
+    # =====================================================
+    # Store Current Login
+    # =====================================================
+    cursor.execute("""
+        INSERT INTO logins
+        (username,password,device,timestamp,status,alert)
+        VALUES (?,?,?,?,?,?)
+    """, (
+        username,
+        password,
+        browser,
+        current_timestamp,
+        status,
+        alert_type
+    ))
+
+    conn.commit()
+
     # =====================================================
     # Model 4 : Spike Detection
     # =====================================================
-
-    one_minute_ago = datetime.now(ZoneInfo("Asia/Kolkata")).timestamp() - 60
-
     cursor.execute("SELECT timestamp FROM logins")
-    recent_attempts = cursor.fetchall()
+    rows = cursor.fetchall()
 
-    count = 0
+    spike_count = 0
 
-    for row in recent_attempts:
+    for row in rows:
         try:
             log_time = datetime.fromisoformat(row[0]).timestamp()
 
             if log_time >= one_minute_ago:
-                count += 1
+                spike_count += 1
 
-        except:
+        except Exception:
             pass
 
-    if count >= 5:
+    if spike_count >= 5:
         conn.close()
         return render_template(
             "alert.html",
@@ -96,22 +148,13 @@ def login():
         )
 
     # =====================================================
-    # Normal Login Check
-    # =====================================================
-
-    if username == "admin" and password == "1234":
-        status = "success"
-    else:
-        status = "failed"
-
-    # =====================================================
     # Model 1 : Brute Force Detection
     # =====================================================
-
-    cursor.execute(
-        "SELECT timestamp FROM logins WHERE username=? AND status='failed'",
-        (username,)
-    )
+    cursor.execute("""
+        SELECT timestamp
+        FROM logins
+        WHERE username=? AND status='failed'
+    """, (username,))
 
     rows = cursor.fetchall()
 
@@ -124,7 +167,7 @@ def login():
             if log_time >= one_minute_ago:
                 failed_attempts += 1
 
-        except:
+        except Exception:
             pass
 
     if failed_attempts >= 5:
@@ -134,89 +177,25 @@ def login():
             message="🚨 ALERT: Too many failed login attempts (Brute Force Detected)"
         )
 
-    # =====================================================
-# =====================================================
-# Model 2 : New Browser Detection
-# =====================================================
-
-if status == "success":
-
-    cursor.execute(
-        """
-        SELECT device
-        FROM logins
-        WHERE username=? AND status='success'
-        ORDER BY id ASC
-        LIMIT 1
-        """,
-        (username,)
-    )
-
-    first_browser = cursor.fetchone()
-
-    # First successful login → Register browser
-    if first_browser is not None and browser != first_browser[0]:
-        alert_message = "🌐 ALERT: Login from a new browser detected."
-        alert_type = "browser"
+    conn.close()
 
     # =====================================================
-    # Model 3 : Time Detection (IST)
+    # Show Browser / Time Alert
     # =====================================================
-
-    current_time = datetime.now(ZoneInfo("Asia/Kolkata"))
-    current_hour = current_time.hour
-
-    if current_hour < 9 or current_hour > 22:
-
-        if alert_message:
-            alert_message += " + ⏰ Unusual login time detected."
-        else:
-            alert_message = "⏰ ALERT: Login at unusual time detected."
-
-        alert_type = "time"
-
-    # =====================================================
-    # Store Login
-    # =====================================================
-
-    cursor.execute(
-        """
-        INSERT INTO logins
-        (username,password,device,timestamp,status,alert)
-        VALUES(?,?,?,?,?,?)
-        """,
-        (
-            username,
-            password,
-            browser,
-            datetime.now(ZoneInfo("Asia/Kolkata")).isoformat(),
-            status,
-            alert_type
-        )
-    )
-
-    conn.commit()
-    conn.close()    # =====================================================
-    # Show Alert
-    # =====================================================
-
     if alert_message:
         return render_template("alert.html", message=alert_message)
 
     # =====================================================
     # Redirect
     # =====================================================
+    if status == "success":
+        return redirect("/dashboard")
+    else:
+        return "Login Failed"
 
-if status == "success":
-    return redirect("/dashboard")
-else:
-    return render_template(
-        "alert.html",
-        message="❌ Invalid Username or Password"
-    )
 
 # -------------------- Dashboard --------------------
-@app.route('/dashboard')
+@app.route("/dashboard")
 def dashboard():
 
     conn = sqlite3.connect("database.db")
