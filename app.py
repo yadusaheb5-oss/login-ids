@@ -95,7 +95,7 @@ def login():
     # =====================================================
     # Model 3 : Time Detection
     # =====================================================
-    if current_time.hour < 9 or current_time.hour > 22:
+    if current_time.hour >= 0:
 
         if alert_message:
             alert_message += " + ⏰ Unusual login time detected."
